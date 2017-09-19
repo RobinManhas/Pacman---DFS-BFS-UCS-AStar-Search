@@ -86,18 +86,30 @@ def depthFirstSearch(problem):
     print "Is the start a goal?", problem.isGoalState(problem.getStartState())
     print "Start's successors:", problem.getSuccessors(problem.getStartState())
     """
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    fringe = util.Stack()
+    initList = []
+    root = (problem.getStartState(),initList,0)
+    fringe.push(root)
+    return solveTheTraversal(problem,0,fringe)
+    #util.raiseNotDefined()
 
 def breadthFirstSearch(problem):
     """Search the shallowest nodes in the search tree first."""
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+
+    fringe = util.Queue()
+    initList = []
+    root = (problem.getStartState(), initList, 0)
+    fringe.push(root)
+    return solveTheTraversal(problem, 1, fringe)
 
 def uniformCostSearch(problem):
     """Search the node of least total cost first."""
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+
+    fringe = util.PriorityQueue()
+    initList = []
+    root = (problem.getStartState(), initList, 0)
+    fringe.push(root,0)
+    return solveTheTraversal(problem, 2, fringe)
 
 def nullHeuristic(state, problem=None):
     """
@@ -108,9 +120,44 @@ def nullHeuristic(state, problem=None):
 
 def aStarSearch(problem, heuristic=nullHeuristic):
     """Search the node that has the lowest combined cost and heuristic first."""
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
 
+    fringe = util.PriorityQueue()
+    initList = []
+    root = (problem.getStartState(), initList, heuristic(problem.getStartState(),problem))
+    fringe.push(root,heuristic(problem.getStartState(),problem))
+    return solveTheTraversal(problem, 3, fringe, heuristic)
+
+def solveTheTraversal(problem,type,fringe,heuristic=nullHeuristic):
+
+    visitedList = []
+    returnList = []
+    while(fringe.isEmpty() == False):
+        parent = fringe.pop()
+        #print "popped: ",parent
+        if(problem.isGoalState(parent[0]) == True):
+            returnList = parent[1]
+            break
+        if parent[0] not in visitedList:
+            childList = problem.getSuccessors(parent[0])
+            for child in childList:
+                if child[0] not in visitedList:
+                    path = parent[1] + [child[1]]
+                    #print "adding child: , ", childNode
+                    cost = 0
+                    if(type == 3):
+                        cost = parent[2]+child[2]+heuristic(child[0],problem)-heuristic(parent[0],problem)
+                        childNode = (child[0], path, cost)
+                        fringe.update(childNode,cost)
+                    elif(type == 2):
+                        cost = parent[2] + child[2]
+                        childNode = (child[0], path, cost)
+                        fringe.update(childNode,cost)
+                    else:
+                        childNode = (child[0], path, child[2])
+                        fringe.push(childNode)
+            visitedList.append(parent[0])
+
+    return returnList
 
 # Abbreviations
 bfs = breadthFirstSearch
