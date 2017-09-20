@@ -90,9 +90,9 @@ def depthFirstSearch(problem):
     # 2. We create an empty initList initially, this list stores the directions that we took to reach this position
     #    Hence it is initally null.
     # 3. We create a tuple of start state, direction list (initList) and cost (0 initially, used for UCS and A*), and send to generic search method
-    fringe = util.Stack()
-    initList = []
-    root = (problem.getStartState(),initList,0)
+    fringe = util.Stack() # our fringe list
+    initList = []         # stores the directions taken to reach this node
+    root = (problem.getStartState(),initList,0) # the root (base position)
     fringe.push(root)
     return solveTheTraversalProblem(problem,0,fringe)
     #util.raiseNotDefined()

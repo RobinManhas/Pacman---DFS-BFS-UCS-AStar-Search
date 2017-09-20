@@ -563,7 +563,9 @@ def foodHeuristic(state, problem):
     Using priority queue to find the shortest maze distance between unconnected foodNodes,creating a minimum spanning tree and finally
     joining the minimum spanned tree to pacman position via the shortest path. The total cost of this minimum spanning tree acts as heuristic value.
 
-    heuristic function that takes the actual distance between the 2 food points (considering the walls and other conditions), instead of manhattan
+
+    
+    Presented below is a heuristic function that takes the actual distance between the 2 food points (considering the walls and other conditions), instead of manhattan
     distance, to find out accurately the distance of 2 points in maze. We used this distances between each node to create a form of minimum
     spanning tree (using priority queue to pick up least weighted edges in each iteration). Finally, when all the food nodes were connected,
     we found the nearest food item from pacman position and hence added the pacman to the tree.
