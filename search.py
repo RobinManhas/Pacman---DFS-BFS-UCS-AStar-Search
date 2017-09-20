@@ -86,30 +86,40 @@ def depthFirstSearch(problem):
     print "Is the start a goal?", problem.isGoalState(problem.getStartState())
     print "Start's successors:", problem.getSuccessors(problem.getStartState())
     """
+    # 1. Our DFS uses stack as fringe data structure
+    # 2. We create an empty initList initially, this list stores the directions that we took to reach this position
+    #    Hence it is initally null.
+    # 3. We create a tuple of start state, direction list (initList) and cost (0 initially, used for UCS and A*), and send to generic search method
     fringe = util.Stack()
     initList = []
     root = (problem.getStartState(),initList,0)
     fringe.push(root)
-    return solveTheTraversal(problem,0,fringe)
+    return solveTheTraversalProblem(problem,0,fringe)
     #util.raiseNotDefined()
-
 def breadthFirstSearch(problem):
     """Search the shallowest nodes in the search tree first."""
-
+    # 1. Our BFS uses queue as fringe data structure
+    # 2. We create an empty initList initially, this list stores the directions that we took to reach this position
+    #    Hence it is initally null.
+    # 3. We create a tuple of start state, direction list (initList) and cost (0 initially, used for UCS and A*), and send to generic search method
     fringe = util.Queue()
     initList = []
     root = (problem.getStartState(), initList, 0)
     fringe.push(root)
-    return solveTheTraversal(problem, 1, fringe)
+    return solveTheTraversalProblem(problem, 1, fringe)
+
 
 def uniformCostSearch(problem):
     """Search the node of least total cost first."""
-
+    # 1. Our UCS uses priority queue as fringe data structure
+    # 2. We create an empty initList initially, this list stores the directions that we took to reach this position
+    #    Hence it is initally null.
+    # 3. We create a tuple of start state, direction list (initList) and cost (0 initially, used for UCS and A*), and send to generic search method
     fringe = util.PriorityQueue()
     initList = []
     root = (problem.getStartState(), initList, 0)
     fringe.push(root,0)
-    return solveTheTraversal(problem, 2, fringe)
+    return solveTheTraversalProblem(problem, 2, fringe)
 
 def nullHeuristic(state, problem=None):
     """
@@ -120,35 +130,40 @@ def nullHeuristic(state, problem=None):
 
 def aStarSearch(problem, heuristic=nullHeuristic):
     """Search the node that has the lowest combined cost and heuristic first."""
-
+    # 1. Our A* uses priority queue as fringe data structure
+    # 2. We create an empty initList initially, this list stores the directions that we took to reach this position
+    #    Hence it is initally null.
+    # 3. We create a tuple of start state, direction list (initList) and cost (0 initially, used for UCS and A*), and send to generic search method
     fringe = util.PriorityQueue()
     initList = []
     root = (problem.getStartState(), initList, heuristic(problem.getStartState(),problem))
     fringe.push(root,heuristic(problem.getStartState(),problem))
-    return solveTheTraversal(problem, 3, fringe, heuristic)
+    return solveTheTraversalProblem(problem, 3, fringe, heuristic)
 
-def solveTheTraversal(problem,type,fringe,heuristic=nullHeuristic):
 
-    visitedList = []
-    returnList = []
+# This is the generic search method written for DFS, BFS, UCS and A*
+def solveTheTraversalProblem(problem,type,fringe,heuristic=nullHeuristic):
+
+    visitedList = [] # stores the nodes that have been visited
+    returnList = []  # stores the directions that will be finally returned to caller search method
     while(fringe.isEmpty() == False):
         parent = fringe.pop()
         #print "popped: ",parent
-        if(problem.isGoalState(parent[0]) == True):
+        if(problem.isGoalState(parent[0]) == True): # add all directions to returnList from the tuple's second argument (initList) once goal is reached
             returnList = parent[1]
             break
-        if parent[0] not in visitedList:
+        if parent[0] not in visitedList:  # do next operations only if these operations were never done before on this node
             childList = problem.getSuccessors(parent[0])
             for child in childList:
-                if child[0] not in visitedList:
+                if child[0] not in visitedList: # get all the children of this node, and if unvisited, calculate the cost of visiting and add to P.Queue
                     path = parent[1] + [child[1]]
                     #print "adding child: , ", childNode
                     cost = 0
-                    if(type == 3):
+                    if(type == 3): # This case is for A* search, we add g(x) + h(x) but substract the heuristic value added of parent to the node already
                         cost = parent[2]+child[2]+heuristic(child[0],problem)-heuristic(parent[0],problem)
                         childNode = (child[0], path, cost)
                         fringe.update(childNode,cost)
-                    elif(type == 2):
+                    elif(type == 2): # Case for UCS, add to fringe list with the calculated cost. The Update function does the job of add too
                         cost = parent[2] + child[2]
                         childNode = (child[0], path, cost)
                         fringe.update(childNode,cost)

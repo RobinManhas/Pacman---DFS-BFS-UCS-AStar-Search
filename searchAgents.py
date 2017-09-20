@@ -40,7 +40,6 @@ from game import Actions
 import util
 import time
 import search
-import math
 
 class GoWestAgent(Agent):
     "An agent that goes West until it can't."
@@ -302,6 +301,10 @@ class CornersProblem(search.SearchProblem):
         space)
         """
         "*** YOUR CODE HERE ***"
+        # Here we return the start state as the tuple of start position and a corner array
+        # The corner array stores either 0 or 1. 0 means corner has not been visited and 1 means visited
+        # This was done to avoid passing corner co-ordinates directly
+        # The indices of array are North, South, East, West for 0, 1, 2, 3 respectively
         corners = [0,0,0,0]
         return (self.startingPosition,corners)
 
@@ -309,6 +312,7 @@ class CornersProblem(search.SearchProblem):
         """
         Returns whether this search state is a goal state of the problem.
         """
+        # Our goal state just checks if all values in corner arrray have become 1, means goal state is reached
         cornerList = state[1]
         for x in cornerList:
             if x == 0:
@@ -333,10 +337,12 @@ class CornersProblem(search.SearchProblem):
             # Here's a code snippet for figuring out whether a new position hits a wall:
             x, y = state[0]
             cornersList = state[1]
-            # print cornersList
+            # Robin: Utilizing default code to some extent here
             dx, dy = Actions.directionToVector(action)
             nextx, nexty = int(x + dx), int(y + dy)
 
+            # The updation of corner array is done here, as this method (getSuccessor) gets called for every discovered node
+            # We update the corresponding corner value as 1, if we have reached the corner in the below written logic
             if not self.walls[nextx][nexty]:
                 nextState = (nextx, nexty)
                 if nextState in self.corners:
@@ -349,7 +355,7 @@ class CornersProblem(search.SearchProblem):
                     elif nextState == self.corner4:
                         corner = [cornersList[0],cornersList[1],cornersList[2],3]
 
-                    successors.append(((nextState, corner), action, 1))
+                    successors.append(((nextState, corner), action, 1)) # Once corner list is updated, it is appended to the node
 
                 else:
                     successors.append(((nextState, cornersList), action, 1))
@@ -397,20 +403,28 @@ def cornersHeuristic(state, problem):
     visitedCorner = state[1]
     toVisit = []
 
+
+    # The logic implemented below works as follows:
+    # 1. We first find all the corners that need to be visited from the corner list and add it to toVisit array
+    # 2. We iterate over the unvisited array toVisit to find the closest corner from current position using manhattan distance
+    # 3. We then change position to this closest corner and repeat the process again if the toVisit array is not empty.
+    # 4. We keep appending the distance found to total distance. Hence the shortest distance from position to corner, then the
+    #    shortest distances between that corner to next nearest unvisited corner and so on gives us the heuristic value.
+    # 5. The idea behind making this heurisitic is described in project report
     for i in range(0,4):
         if visitedCorner[i] == 0:
-            toVisit += [cornerList[i]]
+            toVisit += [cornerList[i]] # add all corners to to visit list
 
-    while len(toVisit) != 0:
+    while len(toVisit) != 0: # while there are corners to be visited
         curDist = 99999
         curNode = -curDist
-        for i in range(len(toVisit)):
+        for i in range(len(toVisit)): # find an unvisited corner with min distance from current position
             dist = getManhattanDistance(position, toVisit[i])
             if dist < curDist and dist >= 0:
                 curDist = dist
                 curNode = i
 
-        #RM: modify heuristic and change position
+        #RM: add to total distance and change position
         totalDist += curDist
         position = toVisit[curNode]
         toVisit.remove(toVisit[curNode])
@@ -438,9 +452,6 @@ class FoodSearchProblem:
         self.startingGameState = startingGameState
         self._expanded = 0 # DO NOT CHANGE
         self.heuristicInfo = {} # A dictionary for the heuristic to store information
-
-    def getGameState(self):
-        return self.startingGameState
 
     def getStartState(self):
         return self.start
@@ -518,7 +529,7 @@ def foodHeuristic(state, problem):
     firstMin = 99999
     firstNode = (-1, -1)
     #find food nearest to initial position
-    gameState = problem.getGameState()
+    gameState = problem.startingGameState
     for adj in toVisit:
         if adj not in visited:
             dist = mazeDistance(position, adj,gameState)
@@ -548,28 +559,45 @@ def foodHeuristic(state, problem):
     return total
 
     Robin Second implementation:
-    Prioritizing the shortest maze distance between foodNodes to connect the whole tree and finally joining the spanned
-    tree to pacman position via the shortest path.
+    TL;DR
+    Using priority queue to find the shortest maze distance between unconnected foodNodes,creating a minimum spanning tree and finally
+    joining the minimum spanned tree to pacman position via the shortest path. The total cost of this minimum spanning tree acts as heuristic value.
+
+    heuristic function that takes the actual distance between the 2 food points (considering the walls and other conditions), instead of manhattan
+    distance, to find out accurately the distance of 2 points in maze. We used this distances between each node to create a form of minimum
+    spanning tree (using priority queue to pick up least weighted edges in each iteration). Finally, when all the food nodes were connected,
+    we found the nearest food item from pacman position and hence added the pacman to the tree.
+
+    The total distance of this minimum spanning tree acted as an admissible and consistent heuristic because minimum spanning tree for the food
+    grid gave us the minimum distance the pacman MUST cover, in order to eat (visit) all the food items, and did not overestimate the distance at
+    any times.
+
+    To further refine our heuristic and make it faster, we created a dictionary mapping of the mazeDistance between 2 nodes and saved the
+    calculated distances in the dictionary. Our source and destination index being key (as tuples), the distance being value.
+    Both source,dest and dest,source key were inserted once the distance was calculated. This helped us in saving close to 2 seconds of
+    recalculation time.
+
     """
     position, foodGrid = state
     toVisit = foodGrid.asList()
     total = 0
     curMin = 99999
     visited = set()
-    gameState = problem.getGameState()
+    gameState = problem.startingGameState
     if(len(toVisit) == 0):
         return 0
-    firstNode = toVisit[0]
+    firstNode = toVisit[0] # choose an arbitrary node as the starting point
     toVisit.remove(firstNode)
-    fringe = util.PriorityQueue()
+    fringe = util.PriorityQueue() # initialize fringe as priority queue
     visited.add(firstNode)
     distanceList = {}
 
+    # this block finds the maze distance between the arbitraty node and all other connected components and add them to fringe
     for vertex in toVisit:
         node = (firstNode,vertex)
         nodeRev = (vertex,firstNode)
-        if node in distanceList:
-            fringe.push(node, distanceList[node])
+        if node in distanceList:        # such if elif else in code below are added to first check if distance has already been calculated for these -
+            fringe.push(node, distanceList[node]) # - 2 nodes or not. If not, we go into else
         elif nodeRev in distanceList:
             fringe.push(node,distanceList[nodeRev])
         else:
@@ -578,17 +606,18 @@ def foodHeuristic(state, problem):
             distanceList[node] = dist
             distanceList[nodeRev] = dist
 
+    # until fringe is empty, pop out a node, and if unvisited, find distance between it and all it's unvisited neighbours and update the fringe
     while(fringe.isEmpty() == False):
         item = fringe.pop()
         if item[1] not in visited:
             visited.add(item[1])
             itemRev = (item[1],item[0])
-            if item in distanceList:
-                total += distanceList[item]
+            if item in distanceList:    # job of if elif and else to check if distance was already computed
+                total += distanceList[item] # if already computed for src to dest, just add the same to total
             elif itemRev in distanceList:
-                total += distanceList[itemRev]
+                total += distanceList[itemRev] # if already computed for dest to src, just add the same to total
             else:
-                dist = mazeDistance(item[0], item[1], gameState)
+                dist = mazeDistance(item[0], item[1], gameState) # compute fresh mazeDistance as no entry found
                 total += dist
                 distanceList[item] = dist
                 distanceList[itemRev] = dist
@@ -596,17 +625,18 @@ def foodHeuristic(state, problem):
                 if n not in visited:
                     remaining = (item[1],n)
                     remainingRev = (n,item[1])
-                    if remaining in distanceList:
+                    if remaining in distanceList: # job of if, elif and else to check if distance was already computed
                         fringe.update(node, distanceList[remaining])
                     elif remainingRev in distanceList:
                         fringe.update(node, distanceList[remainingRev])
                     else:
-                        dist = mazeDistance(item[1], n, gameState)
+                        dist = mazeDistance(item[1], n, gameState) # find dist between dest and all other unvisited nodes, update in fringe
                         fringe.update(remaining, dist)
                         distanceList[remaining] = dist
                         distanceList[remainingRev] = dist
 
 
+    # finally connect the pacman position to the nearest food node in the minimum spanning tree
     for vertex in visited:
         node = (position, vertex)
         nodeRev = (vertex,position)
@@ -620,18 +650,6 @@ def foodHeuristic(state, problem):
             curMin = dist
 
     return total + curMin
-
-
-def findClosestDist(current_pos, corners):
-  idx = -1
-  min_dist = None
-  for i in range(len(corners)):
-    dist = util.manhattanDistance(current_pos, corners[i])
-    if min_dist == None or min_dist > dist:
-      min_dist = dist
-      idx = i
-
-  return idx, min_dist
 
 class ClosestDotSearchAgent(SearchAgent):
     "Search for all food using a sequence of searches"
